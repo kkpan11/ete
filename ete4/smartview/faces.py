@@ -371,10 +371,10 @@ class SeqFace(Face):
         dx, dy = size
         zx, zy = zoom
 
-        if dx <= 0:
+        if dx <= 0:  # no limit on dx? make it as big as possible
             dx = self.poswidth * len(self.seq) / zx
 
-        if self.hmax is not None:
+        if self.hmax is not None:  # make dy so pixel height < hmax
             dy = min(dy, self.hmax / zy)
 
         size = Size(dx, dy)
