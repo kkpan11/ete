@@ -306,7 +306,7 @@ function draw(element, items, tl, zoom, replace=true) {
     });
 
     // Add legends.
-    if (element !== div_minimap)  // but no legends in the minimap
+    if (element === div_tree)  // legends should just appear in the main div
         add_legends(legends);
 
     // Extra operations that we need for the svgs.
