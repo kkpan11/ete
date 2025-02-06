@@ -86,8 +86,8 @@ def draw_text(box, anchor, text, fs_max=None, rotation=0, style=''):
 def draw_image(box, href, style=''):
     return ['image', box, href, style]
 
-def draw_array(box, a):
-    return ['array', box, a]
+def draw_heatmap(box, values, value_range, color_range):
+    return ['heatmap', box, values, value_range, color_range]
 
 def draw_seq(box, seq, seqtype='aa', draw_text=True, fs_max=None, style='',
              render='auto'):
@@ -115,7 +115,7 @@ def draw_group(elements, circular, shift):
 
     for element in elements:
         eid = element[0]  # "element identifier" (name of drawing element)
-        if eid in ['nodebox', 'array', 'seq', 'text']:
+        if eid in ['nodebox', 'array', 'seq', 'heatmap', 'text']:
             # The position for these elements is given by a box.
             x, y, dx, dy = element[1]
             box = x0 + x, y0 + y, dx, dy
@@ -144,3 +144,21 @@ def draw_group(elements, circular, shift):
 def are_valid_angles(*angles):
     EPSILON = 1e-8  # without it, rounding can fake an angle a > pi
     return all(-pi <= a < pi+EPSILON for a in angles)
+
+
+def hex2rgba(color):
+    """Return [r, g, b, a] (from 0 to 255) for color in hex like "#rrggbbaa"."""
+    assert type(color) is str and color.startswith('#') and len(color) in [4, 7, 5, 9], \
+        f'color format must be "#rrggbbaa", invalid value: {color}'
+
+    # Make color look like "#rrggbbaa".
+    if len(color) == 4:  # '#rgb'
+        _, r, g, b = color
+        color = f'#{r}{r}{g}{g}{b}{b}ff'
+    elif len(color) == 7:  # '#rrggbb'
+        color = color + 'ff'
+    elif len(color) == 5:  # '#rgba'
+        _, r, g, b, a = color
+        color = f'#{r}{r}{g}{g}{b}{b}{a}{a}'
+
+    return [int(color[1+2*i:3+2*i], 16) for i in range(4)]

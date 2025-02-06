@@ -232,6 +232,10 @@ function translate(item, shift) {
         return ["seq", tbox(box, shift), seq, seqtype, draw_text, fs_max,
                 style, render];
     }
+    else if (item[0] === "heatmap") {
+        const [ , box, values, value_range, color_range] = item;
+        return ["heatmap", tbox(box, shift), values, value_range, color_range];
+    }
     else if (item[0] === "header") {
         const [ , x, text, fs_max, rotation, style] = item;
         return ["header", x + shift, text, fs_max, rotation, style];
@@ -509,23 +513,41 @@ function create_item(item, tl, zoom, wmax) {
 
         return create_image(box, href, tl, zx, zy, add_ns_prefix(style));
     }
-    else if (item[0] === "array") {
-        const [ , box, array] = item;
+    else if (item[0] === "heatmap") {
+        const [ , box, values, value_range, color_range] = item;
         const [x0, y0, dx0, dy0] = box;
-        const dx = dx0 / array.length;
+        const dx = dx0 / values.length;
+
+        const [vmin, vmax] = value_range;
+        const [[rmin, gmin, bmin, amin],
+               [rmax, gmax, bmax, amax]] = color_range;
+
+        const imin = Math.max(0, Math.floor((tl.x - x0) / dx));
+        const imax = view.shape === "rectangular" ?
+              Math.min(values.length, (wmax / zx + tl.x - x0) / dx) :
+              values.length;
 
         const [y, dy] = pad(y0, dy0, view.array.padding);
 
-        const g = create_svg_element("g");
-        for (let i = 0, x = x0; i < array.length; i++, x+=dx) {
-            const r = view.shape === "rectangular" ?
+        const container = create_svg_element("g");
+        for (let i = imin, x = x0 + imin * dx; i < imax; i++, x+=dx) {
+            const f = (values[i] - vmin) / (vmax - vmin);  // 0 <= f <= 1
+
+            const r = Math.round(rmin + f * (rmax - rmin));  // min <= c <= max
+            const g = Math.round(gmin + f * (gmax - gmin));
+            const b = Math.round(bmin + f * (bmax - bmin));
+            const a = Math.round(amin + f * (amax - amin));
+
+            const tile = view.shape === "rectangular" ?
                 create_rect([x, y, dx, dy], tl, zx, zy) :
                 create_asec([x, y, dx, dy], tl, zx);
-            r.style.fill = `hsl(${array[i]}, 100%, 50%)`;
-            g.appendChild(r);
+
+            tile.style.fill = `rgba(${r},${g},${b},${a})`;
+
+            container.appendChild(tile);
         }
 
-        return g;
+        return container;
     }
     else if (item[0] === "seq") {
         const [ , box, seq, seqtype, draw_text, fs_max, style, render] = item;

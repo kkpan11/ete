@@ -385,6 +385,35 @@ class SeqFace(Face):
         return graphics, size
 
 
+class HeatmapFace(Face):
+    """An array of colored squares according to a value and color range."""
+
+    def __init__(self, values, value_range, color_range,
+                 poswidth=15, hmax=None):
+        self.values = values
+        self.value_range = value_range  # (min, max)
+        self.color_range = [gr.hex2rgba(x) for x in color_range]  # (min, max)
+        self.poswidth = poswidth  # width in pixels of each position (square)
+        self.hmax = hmax  # maximum height in pixels
+
+    def draw(self, nodes, size, collapsed, zoom, ax_ay, r):
+        dx, dy = size
+        zx, zy = zoom
+
+        if dx <= 0:  # no limit on dx? make it as big as possible
+            dx = self.poswidth * len(self.values) / zx
+
+        if self.hmax is not None:  # make dy so pixel height < hmax
+            dy = min(dy, self.hmax / zy)
+
+        size = Size(dx, dy)
+        box = make_box((0, 0), size)
+        graphics = [gr.draw_heatmap(box, self.values,
+                                    self.value_range, self.color_range)]
+
+        return graphics, size
+
+
 class LegendFace(Face):
     """A legend with information about the data we are visualizing."""
 
