@@ -38,8 +38,7 @@
 }
 
 .nodebox {
-    fill: white;
-    stroke: white;
+    fill: #ffffff00;  /* make node boxes transparent by default */
 }
 
 .collapsed {

@@ -46,8 +46,19 @@ def draw(tree, layouts, overrides=None, labels=None,
         face = deco.face
         if deco.position == 'header':  # face must be TextFace or similar
             text = eval_as_str(face.code, tree)
-            yield gr.set_panel(deco.column + 1)
+
+            # Go to the right panel.
+            panel = deco.column + 1  # where the header should go to
+            yield gr.set_panel(panel)  # command to change to panel
+
+            # Update where we keep the "maximum x" arrived to for that panel.
+            width = (face.fs_max/1.6) * len(text) * cos(face.rotation * pi/180)
+            xmax = max(face.fs_max, width) / zoom[0]
+            drawer_obj.xmaxs[panel] = max(drawer_obj.xmaxs.get(panel, 0), xmax)
+
+            # Draw the header and go back to the main panel.
             yield gr.draw_header(text, face.fs_max, face.rotation, face.style)
+            yield gr.set_panel(0)  # command to change to panel 0
             # NOTE: We don't use the face.draw() function, which would
             # draw inside a box. Instead we extract the data and draw by hand.
         elif type(face) is LegendFace:
