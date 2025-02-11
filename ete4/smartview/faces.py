@@ -27,12 +27,29 @@ from .coordinates import Size, Box, make_box
 from . import graphics as gr
 
 
-class Face:
-    """Base class (mostly an example of the expected interface)."""
+default_anchors = {'top':     (-1, 1),   # left, bottom
+                   'bottom':  (-1, -1),  # left, top
+                   'right':   (-1, 0),   # left, middle
+                   'left':    ( 1, 0),   # right, middle
+                   'aligned': (-1, 0),   # left, middle
+                   'header':  (-1, 1),   # left, bottom
+                   'footer':  (-1, 1)}   # (unused for the moment)
 
-    def __init__(self):
+
+class Face:
+    """Base class.
+
+    It contains a position ("top", "bottom", "right", "left",
+    "aligned", "header"), a column (an integer used for relative order
+    with other faces in the same position), and an anchor point (to
+    fine-tune the position of things like texts within them).
+    """
+
+    def __init__(self, position='top', column=0, anchor=None):
         """Save all the parameters that we may want to use."""
-        pass  # in this example, we don't save any
+        self.position = position  # 'top', 'bottom', 'right', etc.
+        self.column = column  # integer >= 0
+        self.anchor = anchor or default_anchors[position]  # tuple
 
     def draw(self, nodes, size, collapsed, zoom=(1, 1), ax_ay=(0, 0), r=1):
         """Return a list of graphic elements and the actual size they use.
@@ -67,7 +84,10 @@ class EvalTextFace(Face):
     going to assign it, or a dictionary with svg attributes for text.
     """
 
-    def __init__(self, expression, fs_min=2, fs_max=16, rotation=0, style=''):
+    def __init__(self, expression, fs_min=2, fs_max=16, rotation=0, style='',
+                 position='top', column=0, anchor=None):
+        super().__init__(position, column, anchor)
+
         self.code = (expression if type(expression) != str else
                      compile(expression, '<string>', 'eval'))
         self.style = style or ('text_' + expression)
@@ -110,18 +130,22 @@ class EvalTextFace(Face):
 class TextFace(EvalTextFace):
     """A fixed text."""
 
-    def __init__(self, text, fs_min=2, fs_max=16, rotation=0, style=''):
+    def __init__(self, text, fs_min=2, fs_max=16, rotation=0,
+                 style='', position='top', column=0, anchor=None):
         expression = '""' if not text else '"%s"' % text.replace('"', r'\"')
-        super().__init__(expression, fs_min, fs_max, rotation, style)
+        super().__init__(expression, fs_min, fs_max, rotation, style,
+                         position, column, anchor)
 
 
 class PropFace(EvalTextFace):
     """A text showing the given property, and optionally a special format."""
 
-    def __init__(self, prop, fmt='%s', fs_min=2, fs_max=16, rotation=0, style=''):
+    def __init__(self, prop, fmt='%s', fs_min=2, fs_max=16, rotation=0,
+                 style='', position='top', column=0, anchor=None):
         pexp = prop if prop in ['name', 'dist', 'support'] else f'p["{prop}"]'
         expression = f'"{fmt}" % {pexp} if "{prop}" in p else ""'
-        super().__init__(expression, fs_min, fs_max, rotation, style)
+        super().__init__(expression, fs_min, fs_max, rotation, style,
+                         position, column, anchor)
 
 
 def make_nodes_summary(nodes, code=None):
@@ -228,7 +252,10 @@ def safer_eval(code, context):
 class CircleFace(Face):
     """A circle."""
 
-    def __init__(self, rmax=None, style=''):
+    def __init__(self, rmax=None, style='',
+                 position='top', column=0, anchor=None):
+        super().__init__(position, column, anchor)
+
         self.rmax = rmax  # maximum radius in pixels
         self.style = style
 
@@ -254,7 +281,10 @@ class CircleFace(Face):
 class PolygonFace(Face):
     """A polygon."""
 
-    def __init__(self, rmax=None, shape=3, style=''):
+    def __init__(self, rmax=None, shape=3, style='',
+                 position='top', column=0, anchor=None):
+        super().__init__(position, column, anchor)
+
         self.shape = shape  # name of the shape or number of edges
         self.rmax = rmax  # maximum "radius" in pixels
         self.style = style
@@ -282,7 +312,10 @@ class BoxedFace(Face):
     """A shape defined by a box (with optionally a text inside)."""
     # Base class for BoxFace and RectFace.
 
-    def __init__(self, wmax, hmax=None, text=None):
+    def __init__(self, wmax, hmax=None, text=None,
+                 position='top', column=0, anchor=None):
+        super().__init__(position, column, anchor)
+
         self.wmax = wmax  # maximum width in pixels
         self.hmax = hmax  # maximum height in pixels
         self.text = TextFace(text) if type(text) is str else text
@@ -327,29 +360,37 @@ class BoxedFace(Face):
 class BoxFace(BoxedFace):
     """A box (with optionally a text inside)."""
 
-    def __init__(self, wmax, hmax=None, style='', text=None):
-        super().__init__(wmax, hmax, text)
+    def __init__(self, wmax, hmax=None, style='', text=None,
+                 position='top', column=0, anchor=None):
+        super().__init__(wmax, hmax, text, position, column, anchor)
+
         self.drawing_fn = lambda box: gr.draw_box(box, style)
 
 
 class RectFace(BoxedFace):
     """A rectangle (with optionally a text inside)."""
 
-    def __init__(self, wmax, hmax=None, style='', text=None):
-        super().__init__(wmax, hmax, text)
+    def __init__(self, wmax, hmax=None, style='', text=None,
+                 position='top', column=0, anchor=None):
+        super().__init__(wmax, hmax, text, position, column, anchor)
+
         self.drawing_fn = lambda box: gr.draw_rect(box, style)
 
 
 class ImageFace(BoxedFace):
     """An image (with optionally a text inside)."""
 
-    def __init__(self, path, wmax, hmax=None, style='', text=None):
-        super().__init__(wmax, hmax, text)
+    def __init__(self, path, wmax, hmax=None, style='', text=None,
+                 position='top', column=0, anchor=None):
+        super().__init__(wmax, hmax, text, position, column, anchor)
+
         assert os.path.exists(path), f'missing image at {path}'
         ext = os.path.splitext(path)[1][1:].lower()  # extension
+
         assert ext in ['png', 'jpeg', 'jpg', 'svg'], f'invalid type: {path}'
         href = ('data:image/' + ext + ';base64,' +
                 b64encode(open(path, 'rb').read()).decode('utf8'))
+
         self.drawing_fn = lambda box: gr.draw_image(box, href, style);
 
 
@@ -357,7 +398,10 @@ class SeqFace(Face):
     """A sequence of nucleotides or amino acids."""
 
     def __init__(self, seq, seqtype='aa', poswidth=15, draw_text=True,
-                 hmax=None, fs_max=15, style='', render='auto'):
+                 hmax=None, fs_max=15, style='', render='auto',
+                 position='top', column=0, anchor=None):
+        super().__init__(position, column, anchor)
+
         self.seq = ''.join(x for x in seq)  # in case it was a list
         self.seqtype = seqtype
         self.poswidth = poswidth  # width in pixels of each nucleotide/aa
@@ -389,7 +433,10 @@ class HeatmapFace(Face):
     """An array of colored squares according to a value and color range."""
 
     def __init__(self, values, value_range, color_range,
-                 poswidth=15, hmax=None):
+                 poswidth=15, hmax=None,
+                 position='top', column=0, anchor=None):
+        super().__init__(position, column, anchor)
+
         self.values = values
         self.value_range = value_range  # (min, max)
         self.color_range = [gr.hex2rgba(x) for x in color_range]  # (min, max)
@@ -418,7 +465,10 @@ class LegendFace(Face):
     """A legend with information about the data we are visualizing."""
 
     def __init__(self, title, variable,
-                 colormap=None, value_range=None, color_range=None):
+                 colormap=None, value_range=None, color_range=None,
+                 position='top', column=0, anchor=None):
+        super().__init__(position, column, anchor)
+
         # Do some very basic consistency checks first.
         if variable == 'discrete':
             assert colormap and value_range is None and color_range is None, \

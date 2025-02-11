@@ -1,6 +1,6 @@
 """
 Definition of the basic elements for a tree representation (Layout and
-Decoration), extra labels (Label), and the default tree style.
+Faces), extra labels (Label), and the default tree style.
 
 The valid keys for a tree style are:
 
@@ -66,14 +66,13 @@ from .faces import Face, PropFace, TextFace
 
 
 # Layouts have all the information needed to represent a tree.
-#
 
 class Layout:
     """
     A complete specification of how to represent a tree.
 
     Layouts have a name and two functions providing the style and
-    decorations of the full tree and the visible nodes.
+    faces of the full tree and the visible nodes.
 
     When exploring a tree, layouts compose. Using several layouts will
     add extra graphic representations, and/or overwrite some styles
@@ -84,8 +83,8 @@ class Layout:
                  active=True):
         """
         :param name: String identifying the layout (to select in the gui, etc.)
-        :param draw_tree: Function specifying tree style and decorations.
-        :param draw_node: Function specifying node style and decorations.
+        :param draw_tree: Function specifying tree style and faces.
+        :param draw_node: Function specifying node style and faces.
         :param cache_size: Number of elements that draw_node() will memorize
             (useful values are None for infinite cache, and 0 for no cache).
         :param active: If True, the layout is used immediately when exploring.
@@ -96,10 +95,10 @@ class Layout:
         assert type(name) is str
         self.name = name
 
-        # Tree representation (style and decorations).
+        # Tree representation (style and faces).
         self.draw_tree = draw_tree
 
-        # Node representation (style and decorations).
+        # Node representation (style and faces).
         self.draw_node = draw_node
 
         # Set if the layout should be initially active in the gui.
@@ -158,19 +157,15 @@ class Layout:
 
 
 def to_elements(xs):
-    """Return a list of the elements of iterable xs as Decorations/dicts."""
-    # Normally xs is already a list of decorations/dicts.
+    """Return a list of the elements of iterable xs as Faces/dicts."""
+    # Normally xs is already a list of faces/dicts.
     if xs is None:  # but xs can be None (a draw_node() didn't return anything)
         return []
-
-    if type(xs) is dict:
-        return [xs]
-
-    if not hasattr(xs, '__iter__'):  # or it can be a single element
-        return [xs if type(xs) is Decoration else Decoration(xs)]
-
-    # Return elements, wrapped as Decorations if they need it.
-    return [x if type(x) in [Decoration, dict] else Decoration(x) for x in xs]
+    elif type(xs) is dict or issubclass(type(xs), Face):  # or single element
+        return [xs]  # return a list containing just that element
+    else:  # normal case (iterable of faces/dicts)
+        return list(xs)  # return a list with the elements
+    # NOTE: If xs is a generator, its cached value is an empty list!
 
 
 DEFAULT_TREE_STYLE = {  # the default style of a tree
@@ -192,47 +187,14 @@ def update_style(style, style_new):
         update_style(style[k], style_new[k])
 
 
-
-@dataclass
-class Decoration:
-    """
-    A decoration is a face with a position ("top", "bottom", "right",
-    etc.), a column (an integer used for relative order with other faces
-    in the same position), and an anchor point (to fine-tune the
-    position of things like texts within them).
-    """
-    face: Face
-    position: str
-    column: int
-    anchor: tuple
-
-    def __init__(self, face, position='top', column=0, anchor=None):
-        self.face = TextFace(face) if type(face) is str else face
-        self.position = position
-        self.column = column
-        self.anchor = anchor or default_anchors[position]
-
-default_anchors = {'top':     (-1, 1),   # left, bottom
-                   'bottom':  (-1, -1),  # left, top
-                   'right':   (-1, 0),   # left, middle
-                   'left':    ( 1, 0),   # right, middle
-                   'aligned': (-1, 0),   # left, middle
-                   'header':  (-1, 1),   # (unused for the moment)
-                   'footer':  (-1, 1)}   # (unused for the moment)
-
-
 # The default layout.
 
 def default_draw_node(node, collapsed):
     if not collapsed:
-        face_dist = PropFace('dist', '%.2g', style='dist')
-        yield Decoration(face_dist, position='top')
-
-        face_support = PropFace('support', '%.2g', style='support')
-        yield Decoration(face_support, position='bottom')
-
+        yield PropFace('dist', '%.2g', style='dist', position='top')
+        yield PropFace('support', '%.2g', style='support', position='bottom')
     if node.is_leaf or collapsed:
-        yield Decoration(PropFace('name'), position='right')
+        yield PropFace('name', position='right')
 
 BASIC_LAYOUT = Layout(name='basic', draw_node=default_draw_node)
 

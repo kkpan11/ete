@@ -166,7 +166,7 @@ def callback(tree_id):
                 for element in layout.draw_tree(t):
                     if type(element) is dict:  # a style element
                         update_style(style, element)
-        # Here we care only for the styles. For tree decorations see draw.py
+        # Here we care only for the styles. For tree faces see draw.py
 
         # Susbstitute aliases for their corresponding styles.
         aliasable_keys = {'box', 'dot', 'hz-line', 'vt-line', 'collapsed'}

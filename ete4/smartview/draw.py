@@ -6,7 +6,7 @@ from math import sin, cos, pi, sqrt, atan2
 
 from ..core import operations as ops
 from .coordinates import Size, Box, make_box, get_xs, get_ys
-from .layout import Decoration, Label, update_style
+from .layout import Label, update_style
 from .faces import LegendFace, EvalTextFace, eval_as_str
 from . import graphics as gr
 
@@ -15,15 +15,15 @@ def draw(tree, layouts, overrides=None, labels=None,
          viewport=None, zoom=(1, 1), collapsed_ids=None, searches=None):
     """Yield graphic commands to draw the tree."""
     style = {}  # tree style
-    decos = []  # tree decorations
+    faces = []  # tree faces
 
-    # Merge the style from all layouts, and get all decorations.
+    # Merge the style from all layouts, and get all faces.
     for layout in layouts:
         for element in layout.draw_tree(tree):
             if type(element) is dict:
                 update_style(style, element)
             else:
-                decos.append(element)
+                faces.append(element)
 
     # NOTE: No need to susbstitute aliased values for their "aliases"
     # style, as opposed to the /style endpoint in explorer.py.
@@ -42,13 +42,12 @@ def draw(tree, layouts, overrides=None, labels=None,
 
     yield from drawer_obj.draw()
 
-    for deco in decos:
-        face = deco.face
-        if deco.position == 'header':  # face must be TextFace or similar
+    for face in faces:
+        if face.position == 'header':  # face must be TextFace or similar
             text = eval_as_str(face.code, tree)
 
             # Go to the right panel.
-            panel = deco.column + 1  # where the header should go to
+            panel = face.column + 1  # where the header should go to
             yield gr.set_panel(panel)  # command to change to panel
 
             # Update where we keep the "maximum x" arrived to for that panel.
@@ -65,7 +64,7 @@ def draw(tree, layouts, overrides=None, labels=None,
             yield gr.draw_legend(face.title, face.variable, face.colormap,
                                  face.value_range, face.color_range)
         else:
-            # TODO: Place things according to the decoration?
+            # TODO: Place things according to the position/column/anchor?
             size = tree.size
             r = size[0]
             graphics, size = face.draw([tree], size, [], zoom, (0, 0), r)
@@ -330,28 +329,28 @@ class Drawer:
 
     def draw_nodes(self, nodes, box, bdy, circular):  # bdy: branch dy (height)
         """Return style and graphic commands for representing nodes."""
-        style = {}  # style
-        decos = []  # decorations
+        style = {}  # style, combining all the existing style dictionaries
+        faces = []  # list of all faces to draw
 
-        # Add style and decorations from draw_node_fns (from layouts).
+        # Add style and faces from draw_node_fns (from layouts).
         for draw_node in self.draw_node_fns:
             for element in draw_node(nodes[0], tuple(self.collapsed)):
                 # NOTE: draw_node() is cached: tuple(...) works (can be hashed).
                 if type(element) is dict:
                     style.update(element)
                 else:
-                    decos.append(element)  # from layouts
+                    faces.append(element)  # from layouts
 
-        # Add decorations from labels.
+        # Add faces from labels.
         is_leaf = nodes[0].is_leaf or self.collapsed  # for is_valid_label()
-        decos.extend(make_deco(label) for label in self.labels
+        faces.extend(make_face(label) for label in self.labels
                      if is_valid_label(label, is_leaf))
 
-        # Get the graphic commands, and xmaxs, from applying the decorations.
-        commands, xmaxs = draw_decorations(decos, nodes, self.xmin, box, bdy,
-                                           self.zoom, self.content_height_min,
-                                           collapsed=self.collapsed,
-                                           circular=circular)
+        # Get the graphic commands, and xmaxs, from applying the faces.
+        commands, xmaxs = draw_faces(faces, nodes, self.xmin, box, bdy,
+                                     self.zoom, self.content_height_min,
+                                     collapsed=self.collapsed,
+                                     circular=circular)
 
         for panel, x in xmaxs.items():
             self.xmaxs[panel] = max(self.xmaxs.get(panel, 0), x)
@@ -549,16 +548,17 @@ def is_valid_label(label, is_leaf):
             (ntype == 'internal' and not is_leaf))
 
 
-def make_deco(label):
-    """Return a Decoration object from its description as a Label one."""
-    face = EvalTextFace(label.code, fs_max=label.fs_max, style=label.style)
-    return Decoration(face, label.position, label.column, label.anchor)
+def make_face(label):
+    """Return a Face object from its description as a Label one."""
+    a = label  # shortcut
+    return EvalTextFace(a.code, fs_max=a.fs_max, style=a.style,
+                        position=a.position, column=a.column, anchor=a.anchor)
 
 
-def draw_decorations(decorations, nodes, xmin, content_box, bdy, zoom,
-                     min_size, collapsed, circular=False):
-    """Return the graphic commands from the decorations, and xmaxs."""
-    positions = {a.position for a in decorations}
+def draw_faces(faces, nodes, xmin, content_box, bdy, zoom,
+               min_size, collapsed, circular=False):
+    """Return the graphic commands from the faces, and xmaxs."""
+    positions = {a.position for a in faces}
 
     xmaxs = {0: content_box.x + content_box.dx}
     commands = []
@@ -573,9 +573,9 @@ def draw_decorations(decorations, nodes, xmin, content_box, bdy, zoom,
             pos_box = Box(pos_box.x + 10/zoom[0], pos_box.y,
                           pos_box.dx, pos_box.dy)
 
-        decos_at_pos = [a for a in decorations if a.position == pos]
+        faces_at_pos = [f for f in faces if f.position == pos]
 
-        columns = sorted(set(a.column for a in decos_at_pos))
+        columns = sorted(set(f.column for f in faces_at_pos))
         ncols = len(columns)  # number of columns
 
         x_col = max(pos_box.x, xmin)  # where we start
@@ -583,7 +583,7 @@ def draw_decorations(decorations, nodes, xmin, content_box, bdy, zoom,
             if pos == 'aligned':  # here columns are "panels" (starting at 1)
                 commands.append(gr.set_panel(col + 1))
 
-            rows = [a for a in decos_at_pos if a.column == col]
+            rows = [f for f in faces_at_pos if f.column == col]
             dx_col = (pos_box.dx - (x_col - pos_box.x)) / (ncols - icol)
 
             if (pos in ['left', 'right', 'aligned'] or  # in these, dx == 0
@@ -608,7 +608,7 @@ def draw_decorations(decorations, nodes, xmin, content_box, bdy, zoom,
 def get_col_data(rows, x_col, dx_col, nodes, pos_box, pos, bdy_dy, zoom,
                  min_size, collapsed, circular=False):
     """Return the graphic elements at the given rows, and the new x_col."""
-    # rows contains all the decorations that go in this column.
+    # rows contains all the faces that go in this column.
     # x_col is the starting x for this column (after all boxes in previos cols).
     # dx_col is the "allocated dx for this column".
 
@@ -618,14 +618,14 @@ def get_col_data(rows, x_col, dx_col, nodes, pos_box, pos, bdy_dy, zoom,
 
     blocks = []  # will contain the column data to send afterwards
 
-    # Iterate over the decorations and get their graphics (none if
+    # Iterate over the faces and get their graphics (none if
     # there's not enough space). We iterate reversed ([::-1]) so the
-    # first decorations are the ones with more space (dy) allocated.
+    # first faces are the ones with more space (dy) allocated.
     dy_sum = 0
     ax, ay = None, None  # so we set the anchor only once per column
-    for irow, deco in enumerate(rows[::-1]):  # iterate over all decorations
+    for irow, face in enumerate(rows[::-1]):  # iterate over all faces
         if ax is None:  # anchor already set? then no more for this column!
-            ax, ay = get_anchor(deco.anchor, pos, bdy_dy)
+            ax, ay = get_anchor(face.anchor, pos, bdy_dy)
 
         dy_row = (dy_pos - dy_sum) / (nrows - irow)  # allocated dy for this row
 
@@ -637,8 +637,8 @@ def get_col_data(rows, x_col, dx_col, nodes, pos_box, pos, bdy_dy, zoom,
 
         # Finally draw the face.
         r = x_pos if circular and pos != 'aligned' else 1  # "radius"
-        elements, size = deco.face.draw(nodes, Size(dx_col, dy_row),
-                                        collapsed, zoom, (ax, ay), r)
+        elements, size = face.draw(nodes, Size(dx_col, dy_row),
+                                   collapsed, zoom, (ax, ay), r)
         blocks.append( (elements, size) )
         dx_max = max(dx_max, size.dx)
         dy_sum += size.dy
