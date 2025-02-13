@@ -724,7 +724,9 @@ function on_box_click(event, box, node_id) {
     else {  // we simply clicked on this node (maybe show tooltip)
         const data = event.target.dataset;  // get from data attributes
         if (data.mousepos === `${event.pageX} ${event.pageY}`) {  // didn't move
-            div_info.innerHTML = `<p>${data.info}</p>`;
+            div_info.innerHTML = `<div>${data.info}</div>` +
+                '<button class="info_button"' +
+                `   onclick="div_info.style.visibility='hidden'">×</button>`;
             div_info.style.left = `${event.pageX}px`;
             div_info.style.top = `${event.pageY}px`;
             div_info.style.visibility = "visible";  // show "tooltip"
