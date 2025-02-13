@@ -18,11 +18,6 @@ const dragging = {
 
 
 function drag_start(point, element) {
-    if ([div_tree, div_visible_rect, div_legend].includes(element))
-        element.style.cursor = "grabbing";
-    else if (element === div_aligned)
-        element.style.cursor = "ew-resize";
-
     dragging.p0 = dragging.p_last = point;
     dragging.element = element;
 }
@@ -49,6 +44,11 @@ function drag_stop() {
 function drag_move(point) {
     if (!dragging.element)
         return;
+
+    if ([div_tree, div_visible_rect, div_legend].includes(dragging.element))
+        dragging.element.style.cursor = "grabbing";
+    else if (dragging.element === div_aligned)
+        dragging.element.style.cursor = "ew-resize";
 
     const movement = {x: point.x - dragging.p_last.x,
                       y: point.y - dragging.p_last.y};
