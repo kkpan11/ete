@@ -432,7 +432,7 @@ def to_ultrametric(tree, topological=False):
 
     for node in tree.traverse():
         if node.dist > 0:
-            d = sum(n.dist for n in node.ancestors())
+            d = sum(n.dist for n in node.ancestors(root=tree))
             node.dist *= (dist_full - d) / node.size[0]
 
 
