@@ -437,13 +437,10 @@ function create_item(item, tl, zoom, wmax) {
             on_box_wheel(event, box), {passive: false});
 
         // Save information in the box as a data attribute string (.dataset).
-        if (name || Object.entries(props).length > 0) {
-
+        // This will be used for the "tooltip" in on_box_click().
+        if (name || Object.entries(props).length > 0)
             b.dataset.info = (name ? `<i>${name}</i> ` : "") + "<br>" +
-                (Object.entries(props).map(([k, v]) => `<b>${k}:</b> ${v}`)
-                 .join("<br>"));
-            // This will be used for the "tooltip" in on_box_click().
-        }
+                Object.entries(props).map(([k, v]) => `<b>${k}:</b> ${v}`).join("<br>");
 
         return b;
     }
