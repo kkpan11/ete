@@ -94,6 +94,7 @@ function on_keydown(event) {
     }
     else if (key === "Escape") {
         div_contextmenu.style.visibility = "hidden";
+        div_info.style.visibility = "hidden";
     }
     else {
         is_hotkey = false;
@@ -134,6 +135,10 @@ function is_svg(element) {
 function on_mousedown(event) {
     if (!div_contextmenu.contains(event.target))
         div_contextmenu.style.visibility = "hidden";
+
+    if (!div_info.contains(event.target) &&
+        (!div_menu.contains(event.target) && !view.select_text))
+        div_info.style.visibility = "hidden";
 
     if (event.button && event.button !== 0)
         return;  // we are only interested in left-clicks

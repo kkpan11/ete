@@ -181,6 +181,30 @@
     background-color: white;
 }
 
+#div_info {
+    position: absolute;
+    z-index: 4;
+    visibility: hidden;
+    border-style: solid;
+    border-color: #DDD;
+    border-width: 2px;
+    border-radius: 10px;
+    box-shadow: 3px 3px 3px #DDD;
+    background-color: white;
+    padding: 10px;
+    user-select: text;
+}
+
+.info_button {
+    padding: 3px 8px;
+    border-style: hidden;
+    background-color: white;
+}
+
+.info_button:hover {
+    background-color: #EEE;
+}
+
 .ctx_button {
     width: 100%;
     cursor: pointer;

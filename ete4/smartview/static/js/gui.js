@@ -711,6 +711,9 @@ function coordinates(point) {
 
 
 function on_box_click(event, box, node_id) {
+    if (event.button !== 0)
+        return;  // we are only interested in left-clicks
+
     if (event.detail === 2 || event.ctrlKey) {  // double-click or ctrl-click
         zoom_into_box(box);
     }
@@ -718,12 +721,23 @@ function on_box_click(event, box, node_id) {
         view.subtree += (view.subtree ? "," : "") + node_id;
         on_tree_change();
     }
+    else {  // we simply clicked on this node (maybe show tooltip)
+        const data = event.target.dataset;  // get from data attributes
+        if (data.mousepos === `${event.pageX} ${event.pageY}`) {  // didn't move
+            div_info.innerHTML = `<p>${data.info}</p>`;
+            div_info.style.left = `${event.pageX}px`;
+            div_info.style.top = `${event.pageY}px`;
+            div_info.style.visibility = "visible";  // show "tooltip"
+        }
+    }
 }
 
 
 // Mouse wheel -- zoom in/out (instead of scrolling).
 function on_box_wheel(event, box) {
     event.preventDefault();
+
+    div_info.style.visibility = "hidden";  // in case it was visible
 
     const point = {x: event.pageX, y: event.pageY};
     const deltaY = event.deltaY;

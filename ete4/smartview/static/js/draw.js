@@ -424,15 +424,28 @@ function create_item(item, tl, zoom, wmax) {
 
         result_of.forEach(t => b.classList.add(get_search_class(t, "results")));
 
-        b.addEventListener("click", event =>
+        b.addEventListener("mousedown", event =>
+            b.dataset.mousepos = `${event.pageX} ${event.pageY}`);
+        b.addEventListener("mouseup", event =>
             on_box_click(event, box, node_id));
+        // NOTE: Instead of a "click", we store the position at mousedown (to
+        // later check if it moved), and trigger the click on the mouseup.
+
         b.addEventListener("contextmenu", event =>
             on_box_contextmenu(event, box, name, props, node_id));
         b.addEventListener("wheel", event =>
             on_box_wheel(event, box), {passive: false});
 
-        if (name || Object.entries(props).length > 0)
-            b.appendChild(create_tooltip(name, props));
+        // Save information in the box as a data attribute string (.dataset).
+        if (name || Object.entries(props).length > 0) {
+            const close = '<button class="info_button" ' +
+                  `onclick="div_info.style.visibility='hidden'">×</button>`;
+
+            b.dataset.info = (name ? `<i>${name}</i> ` : "") + close + "<br>" +
+                (Object.entries(props).map(([k, v]) => `<b>${k}:</b> ${v}`)
+                 .join("<br>"));
+            // This will be used for the "tooltip" in on_box_click().
+        }
 
         return b;
     }
@@ -801,17 +814,6 @@ function create_circ_outline(box, tl, z) {
               A ${z * (r + dr)} ${z * (r + dr)} 0 ${large} 1 ${p11.x} ${p11.y}
               L ${p0.x} ${p0.y}`,
     });
-}
-
-
-// Return an element that, appended to a svg element (normally a box), will
-// make it show a tooltip showing nicely the given name and properties.
-function create_tooltip(name, props) {
-    const title = create_svg_element("title", {});
-    const text = (name ? name : "(unnamed)") + "\n" +
-        Object.entries(props).map(x => x[0] + ": " + x[1]).join("\n");
-    title.appendChild(document.createTextNode(text));
-    return title;
 }
 
 
